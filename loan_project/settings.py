@@ -37,7 +37,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # 'rest_framework.authtoken',
     'rest_framework',
+    'drf_yasg',
+    # 'django_filters',
     'loan',
 ]
 
@@ -123,3 +126,25 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Add these settings for drf-yasg
+SWAGGER_SETTINGS = {
+    'DEFAULT_INFO': 'loan_project.urls.api_info',
+    'USE_SESSION_AUTH': False,
+    'SECURITY_DEFINITIONS': {},
+    'DEFAULT_AUTO_SCHEMA_CLASS': 'drf_yasg.inspectors.SwaggerAutoSchema',
+}
+
+REDOC_SETTINGS = {
+   'LAZY_RENDERING': False,
+}
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_PERMISSION_CLASSES': [],
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
+}

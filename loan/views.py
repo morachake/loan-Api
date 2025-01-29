@@ -1,43 +1,29 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, views, status
 from rest_framework.response import Response
-from rest_framework.decorators import action
-from .models import Loan, AmortizationSchedule
-from .serializers import LoanSerializer
-from .utils import calculate_loan_amortization
+from .models import Bank
+from .serializers import BankSerializer, LoanCalculationRequestSerializer, LoanCalculationResponseSerializer
+from .services import calculate_loan_amortization
 
-class LoanViewSet(viewsets.ModelViewSet):
-    queryset = Loan.objects.all()
-    serializer_class = LoanSerializer
+class BankViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Bank.objects.all()
+    serializer_class = BankSerializer
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        loan = serializer.save()
-        
-        # Calculate amortization schedule
-        calculations = calculate_loan_amortization(loan)
-        
-        # Save amortization schedule
-        schedule_objects = []
-        for entry in calculations['schedule']:
-            entry['loan'] = loan
-            schedule_objects.append(AmortizationSchedule(**entry))
-        AmortizationSchedule.objects.bulk_create(schedule_objects)
-        
-        # Update loan with calculated totals
-        loan.monthly_payment = calculations['monthly_payment']
-        loan.total_payment = calculations['total_payment']
-        loan.total_interest = calculations['total_interest']
-        loan.save()
-        
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+class LoanCalculatorView(views.APIView):
+    def post(self, request):
+        serializer = LoanCalculationRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            loan_data = serializer.validated_data
+            
+            # If interest_rate is not provided, try to get it from the bank
+            if 'interest_rate' not in loan_data:
+                try:
+                    bank = Bank.objects.get(name=loan_data['bank'])
+                    loan_data['interest_rate'] = bank.interest_rate
+                except Bank.DoesNotExist:
+                    return Response({"error": "Bank not found and interest rate not provided"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            calculation_result = calculate_loan_amortization(loan_data)
+            response_serializer = LoanCalculationResponseSerializer(calculation_result)
+            return Response(response_serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['post'])
-    def calculate(self, request):
-        """Calculate loan details without saving"""
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        loan = Loan(**serializer.validated_data)
-        calculations = calculate_loan_amortization(loan)
-        return Response(calculations)

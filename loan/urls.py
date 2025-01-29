@@ -1,13 +1,12 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import LoanViewSet, LoanStatisticsView
-
-app_name = 'loan'
+from .views import BankViewSet, LoanCalculatorView
 
 router = DefaultRouter()
-router.register(r'loans', LoanViewSet, basename='loan')
+router.register(r'banks', BankViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('statistics/', LoanStatisticsView.as_view(), name='loan-statistics'),
+    path('calculate/', LoanCalculatorView.as_view(), name='loan-calculate'),
 ]
+

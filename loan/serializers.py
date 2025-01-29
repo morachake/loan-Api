@@ -1,20 +1,36 @@
 from rest_framework import serializers
-from .models import Loan, AmortizationSchedule
+from .models import Bank
 
-class AmortizationScheduleSerializer(serializers.ModelSerializer):
+class BankSerializer(serializers.ModelSerializer):
     class Meta:
-        model = AmortizationSchedule
-        fields = ['payment_number', 'beginning_balance', 'payment', 
-                 'principal', 'interest', 'ending_balance']
+        model = Bank
+        fields = ['id', 'name', 'interest_rate']
 
-class LoanSerializer(serializers.ModelSerializer):
-    schedule = AmortizationScheduleSerializer(many=True, read_only=True)
-    total_payment = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    total_interest = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    monthly_payment = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+class LoanCalculationRequestSerializer(serializers.Serializer):
+    bank = serializers.CharField(max_length=100)
+    loan_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    loan_term_years = serializers.IntegerField(min_value=0)
+    loan_term_months = serializers.IntegerField(min_value=0, max_value=11)
+    interest_rate = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+    compound_period = serializers.ChoiceField(choices=[('MONTHLY_APR', 'Monthly (APR)')])
+    payment_frequency = serializers.ChoiceField(choices=[
+        ('MONTHLY', 'Monthly'),
+        ('DAILY', 'Daily'),
+        ('WEEKLY', 'Weekly'),
+        ('ANNUALLY', 'Annually')
+    ])
 
-    class Meta:
-        model = Loan
-        fields = ['id', 'amount', 'term_years', 'term_months', 'interest_rate',
-                 'compound_period', 'payment_frequency', 'monthly_payment',
-                 'total_payment', 'total_interest', 'schedule']
+class AmortizationEntrySerializer(serializers.Serializer):
+    payment_number = serializers.IntegerField()
+    beginning_balance = serializers.DecimalField(max_digits=12, decimal_places=2)
+    payment_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    principal_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    interest_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    ending_balance = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+class LoanCalculationResponseSerializer(serializers.Serializer):
+    monthly_payment = serializers.DecimalField(max_digits=12, decimal_places=2)
+    total_payments = serializers.IntegerField()
+    total_interest = serializers.DecimalField(max_digits=12, decimal_places=2)
+    amortization_schedule = AmortizationEntrySerializer(many=True)
+
