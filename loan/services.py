@@ -47,7 +47,7 @@ def calculate_loan_amortization(loan_data):
         if compound_period == 'CONTINUOUS':
             effective_rate = (Decimal.exp(annual_rate) - 1) / Decimal(str(payments))
         else:
-            effective_rate = ((1 + annual_rate / Decimal(str(compounds))) ** Decimal(str(compounds)) - 1) / Decimal(str(payments))
+            effective_rate = ((1 + annual_rate / Decimal(str(compounds))) ** (Decimal(str(compounds)) / Decimal(str(payments)))) - 1
 
         # Calculate payment amount
         if effective_rate == Decimal('0'):
@@ -89,7 +89,12 @@ def calculate_loan_amortization(loan_data):
             'payment_amount': payment_amount,
             'total_payments': int(total_payments),
             'total_interest': total_interest,
-            'amortization_schedule': schedule
+            'total_cost': principal + total_interest,
+            'amortization_schedule': schedule,
+            'annual_rate': annual_rate,
+            'loan_term_years': term_years,
+            'loan_term_months': term_months,
+            'payment_frequency': payment_frequency,
         }
 
     except Exception as e:
