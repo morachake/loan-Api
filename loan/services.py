@@ -7,30 +7,53 @@ def calculate_loan_amortization(loan_data):
         annual_rate = Decimal(str(loan_data['interest_rate'])) / Decimal('100')
         term_years = Decimal(str(loan_data['loan_term_years']))
         term_months = Decimal(str(loan_data['loan_term_months']))
+        compound_period = loan_data['compound_period']
         payment_frequency = loan_data['payment_frequency']
 
         # Calculate total term in months
         total_term_months = term_years * Decimal('12') + term_months
 
-        # Get number of payments per year
+        # Define compounds per year and payments per year
+        compounds_per_year = {
+            'ANNUALLY': 1,
+            'SEMI_ANNUALLY': 2,
+            'QUARTERLY': 4,
+            'MONTHLY_APR': 12,
+            'SEMI_MONTHLY': 24,
+            'BIWEEKLY': 26,
+            'WEEKLY': 52,
+            'DAILY': 365,
+            'CONTINUOUS': float('inf')
+        }
+
         payments_per_year = {
-            'MONTHLY': Decimal('12'),
-            'DAILY': Decimal('365'),
-            'WEEKLY': Decimal('52'),
-            'ANNUALLY': Decimal('1')
-        }[payment_frequency]
+            'EVERYDAY': 365,
+            'EVERY_WEEK': 52,
+            'EVERY_WEEKS': 26,
+            'EVERY_HALF_MONTH': 24,
+            'EVERY_MONTH': 12,
+            'EVERY_6_MONTHS': 2,
+            'ANNUALLY': 1
+        }
+
+        # Get number of compounds and payments per year
+        compounds = compounds_per_year[compound_period]
+        payments = payments_per_year[payment_frequency]
 
         # Calculate total number of payments
-        total_payments = (total_term_months * payments_per_year / Decimal('12')).to_integral_value(rounding=ROUND_HALF_UP)
+        total_payments = (total_term_months * Decimal(str(payments)) / Decimal('12')).to_integral_value(rounding=ROUND_HALF_UP)
 
         # Calculate effective interest rate per payment period
-        r = (Decimal('1') + annual_rate/Decimal('12')) ** (Decimal('12')/payments_per_year) - Decimal('1')
+        if compound_period == 'CONTINUOUS':
+            effective_rate = (Decimal.exp(annual_rate) - 1) / Decimal(str(payments))
+        else:
+            effective_rate = ((1 + annual_rate / Decimal(str(compounds))) ** Decimal(str(compounds)) - 1) / Decimal(str(payments))
 
         # Calculate payment amount
-        if r == Decimal('0'):
+        if effective_rate == Decimal('0'):
             payment_amount = principal / total_payments
         else:
-            payment_amount = (principal * r * (Decimal('1') + r) ** total_payments) / ((Decimal('1') + r) ** total_payments - Decimal('1'))
+            payment_amount = (principal * effective_rate * (1 + effective_rate) ** total_payments) / ((1 + effective_rate) ** total_payments - 1)
 
         # Round payment amount to 2 decimal places
         payment_amount = payment_amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
@@ -41,7 +64,7 @@ def calculate_loan_amortization(loan_data):
         total_interest = Decimal('0.00')
 
         for payment_number in range(1, int(total_payments) + 1):
-            interest_amount = (balance * r).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            interest_amount = (balance * effective_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
             principal_amount = (payment_amount - interest_amount).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
             
             # Adjust last payment to account for rounding
@@ -63,7 +86,7 @@ def calculate_loan_amortization(loan_data):
             })
 
         return {
-            'monthly_payment': payment_amount,
+            'payment_amount': payment_amount,
             'total_payments': int(total_payments),
             'total_interest': total_interest,
             'amortization_schedule': schedule
